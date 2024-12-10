@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prescrições - MedControl</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <script src="js/auth.js"></script>
+    <script>
+        (function() {
+            if (!requireAuth()) {return;}
+        })();
+    </script>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">MedControl</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/prescricoes.html">Prescrições</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/remedios.html">Remédios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">Sair</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1>Minhas Prescrições</h1>
+        <button class="btn btn-primary mb-3" onclick="mostrarFormularioPrescricao()">Adicionar Prescrição</button>
+        
+        <div id="listaPrescricoes">
+            <!-- As prescrições serão carregadas aqui dinamicamente -->
+        </div>
+
+        <div id="formularioPrescricao" style="display: none;">
+            <h2>Nova Prescrição</h2>
+            <form id="formPrescricao">
+                <div class="mb-3">
+                    <label for="idUsuario" class="form-label">Usuário</label>
+                    <select class="form-select" id="idUsuario" required>
+                        <!-- Opções de usuários serão carregadas aqui -->
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="idRemedio" class="form-label">Remédio</label>
+                    <select class="form-select" id="idRemedio" required>
+                        <!-- Opções de remédios serão carregadas aqui -->
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="frequencia" class="form-label">Frequência</label>
+                    <input type="number" class="form-control" id="frequencia" required>
+                </div>
+                <div class="mb-3">
+                    <label for="dtInicio" class="form-label">Data de Início</label>
+                    <input type="date" class="form-control" id="dtInicio" required>
+                </div>
+                <div class="mb-3">
+                    <label for="dtFim" class="form-label">Data de Fim</label>
+                    <input type="date" class="form-control" id="dtFim">
+                </div>
+                <div class="mb-3">
+                    <label for="observacao" class="form-label">Observação</label>
+                    <textarea class="form-control" id="observacao"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        async function carregarRemedios() {
+        try {
+            const response = await authFetch('http://localhost:3000/api/remedio');
+            if (!response.ok) {
+                throw new Error('Erro ao carregar remédios');
+            }
+            const remedios = await response.json();
+            console.log('Remédios carregados:', remedios);
+            const select = document.getElementById('idRemedio');
+            select.innerHTML = '';
+
+            remedios.forEach(remedio => {
+                const option = document.createElement('option');
+                option.value = remedio.id;
+                option.textContent = remedio.nome;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao carregar lista de remédios');
+        }
+    }
+
+        async function carregarPrescricoes() {
+            try {
+                const response = await authFetch('http://localhost:3000/api/prescricao');
+
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar prescrições');
+                }
+
+                const prescricoes = await response.json();
+                const lista = document.getElementById('listaPrescricoes');
+                lista.innerHTML = '';
+
+                prescricoes.forEach(prescricao => {
+                    const div = document.createElement('div');
+                    div.className = 'card mb-3';
+                    div.innerHTML = `
+                        <div class="card-body">
+                            <h5 class="card-title">${prescricao.remedio.nome}</h5>
+                            <p class="card-text">
+                                Frequência: ${prescricao.frequencia}<br>
+                                Data Início: ${new Date(prescricao.dt_inicio).toLocaleDateString()}<br>
+                                ${prescricao.dt_fim ? `Data Fim: ${new Date(prescricao.dt_fim).toLocaleDateString()}<br>` : ''}
+                                ${prescricao.observacao ? `Observação: ${prescricao.observacao}` : ''}
+                            </p>
+                            <button class="btn btn-danger btn-sm" onclick="deletarPrescricao(${prescricao.id})">Excluir</button>
+                        </div>
+                    `;
+                    lista.appendChild(div);
+                });
+            } catch (error) {
+                console.error('Erro:', error);
+                if (error.message !== 'Não autenticado' && error.message !== 'Sessão expirada') {
+                    alert('Erro ao carregar prescrições');
+                }
+            }
+        }
+
+        function mostrarFormularioPrescricao() {
+            document.getElementById('formularioPrescricao').style.display = 'block';
+            carregarRemedios();
+            carregarUsuarios();
+        }
+
+        document.getElementById('formPrescricao').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            try {
+                const token = getAuthToken()
+                const dados = {
+                    id_remedio: parseInt(document.getElementById('idRemedio').value),
+                    frequencia: parseInt(document.getElementById('frequencia').value),
+                    dt_inicio: document.getElementById('dtInicio').value,
+                    dt_fim: document.getElementById('dtFim').value || null,
+                    observacao: document.getElementById('observacao').value,
+                    id_usuario: JSON.parse(atob(token.split('.')[1])).id
+                };
+
+                const response = await authFetch('http://localhost:3000/api/prescricao', {
+                    method: 'POST',
+                    body: JSON.stringify(dados)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Erro ao criar prescrição');
+                }
+
+                alert('Prescrição criada com sucesso!');
+                document.getElementById('formularioPrescricao').style.display = 'none';
+                document.getElementById('formPrescricao').reset();
+                carregarPrescricoes();
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao criar prescrição' + error.message);
+            }
+        });
+
+        async function deletarPrescricao(id) {
+            if (!confirm('Tem certeza que deseja excluir esta prescrição?')) {
+                return;
+            }
+
+            try {
+                const response = await authFetch(`http://localhost:3000/api/prescricao/${id}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    throw new Error(' Erro ao excluir prescrição');
+                }
+
+                alert('Prescrição excluída com sucesso!');
+                carregarPrescricoes();
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao excluir prescrição');
+            }
+        }
+
+        async function carregarUsuarios() {
+        try {
+            const response = await authFetch('http://localhost:3000/api/usuario'); // Ajuste a URL se necessário
+
+            if (!response.ok) {
+                throw new Error('Erro ao carregar usuários');
+            }
+
+            const usuarios = await response.json();
+            const select = document.getElementById('idUsuario'); // Certifique-se de que o ID está correto
+            select.innerHTML = '';
+
+            usuarios.forEach(usuario => {
+                const option = document.createElement('option');
+                option.value = usuario.id; // Ajuste se o campo ID for diferente
+                option.textContent = usuario.nome; // Ajuste se o campo nome for diferente
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao carregar lista de usuários');
+        }
+    }
+
+        carregarPrescricoes();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

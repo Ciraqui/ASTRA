@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgres"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo produto
+model produto {
+  id_produto         Int      @id @default(autoincrement())
+  nome               String
+  tipo               String
+  base_custo         Float
+  margem_lucro       Float
+  material_principal String
+  itens_pedido       item_pedido[]
+}
+
+// Modelo cliente
+model cliente {
+  id_cliente         Int      @id @default(autoincrement())
+  nome               String
+  contato            String?
+  endereco           String?
+  pedidos            pedido[]
+}
+
+// Modelo imagem
+model imagem {
+  id_imagem          Int      @id @default(autoincrement())
+  origem             String
+  custo_adicional    Float
+  itens_pedido       item_pedido[]
+}
+
+// Modelo pedido
+model pedido {
+  id_pedido          Int        @id @default(autoincrement())
+  data               DateTime   @default(now())
+  valor_total        Float
+  status             String
+  cliente            cliente?   @relation(fields: [cliente_id], references: [id_cliente])
+  cliente_id         Int?
+  itens_pedido       item_pedido[]
+}
+
+// Modelo personalizacao
+model personalizacao {
+  id_personalizacao  Int       @id @default(autoincrement())
+  tipo               String
+  valor_adicional    Float
+  detalhes           String?
+  itens_pedido       item_pedido[]
+}
+
+// Modelo item_pedido
+model item_pedido {
+  id_item            Int        @id @default(autoincrement())
+  quantidade         Int        @default(1)
+  preco_total        Float
+  pedido             pedido     @relation(fields: [pedido_id], references: [id_pedido])
+  pedido_id          Int
+  produto            produto    @relation(fields: [produto_id], references: [id_produto])
+  produto_id         Int
+  imagem             imagem?    @relation(fields: [imagem_id], references: [id_imagem])
+  imagem_id          Int?
+  personalizacao     personalizacao? @relation(fields: [personalizacao_id], references: [id_personalizacao])
+  personalizacao_id  Int?
+}
+
+// Modelo usuario
+model usuario {
+  id_usuario         Int        @id @default(autoincrement())
+  nome               String
+  email              String     @unique
+  senha              String
+  permissao          permissao  @default(USUARIO)
+  data_criacao       DateTime   @default(now())
+  ultimo_login       DateTime?
+}
+
+// Enum para permissao
+enum permissao {
+  ADMIN
+  USUARIO
+  GESTOR
+}

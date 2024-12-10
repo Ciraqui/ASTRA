@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - MedControl</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">MedControl</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard.html">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/prescricoes.html">Prescrições</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/remedios.html">Remédios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="logout()">Sair</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1>Histórico de Medicamentos</h1>
+        
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Medicamento</th>
+                                <th>Prescrição</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historicoTable">
+                            <!-- Dados serão inseridos aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        async function carregarHistorico() {
+            try {
+                const response = await authFetch('http://localhost:3000/api/historico');
+
+                if (response.ok) {
+                    const historicos = await response.json();
+                    const tableBody = document.getElementById('historicoTable');
+                    tableBody.innerHTML = '';
+
+                    historicos.forEach(historico => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${new Date(historico.dt_atual).toLocaleDateString()}</td>
+                            <td>${historico.prescricao.remedio.nome}</td>
+                            <td>${historico.prescricao.observacao || '-'}</td>
+                            <td>${historico.status ? 'Tomado' : 'Pendente'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                if (error.message !== 'Não autenticado' && error.message !== 'Sessão expirada') {
+                    alert('Erro ao carregar histórico');
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', carregarHistorico);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

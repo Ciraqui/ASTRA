@@ -44,7 +44,7 @@ async function login(email, senha) {
         }
 
         localStorage.setItem('token', data.token);
-        window.location.href = '/dashboard.html';
+        window.location.href = '/index.html';
     } catch (error) {
         console.error('Erro durante login:', error);
         throw error;

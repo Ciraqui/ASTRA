@@ -6,7 +6,10 @@ const produtoController = {
     try {
       const { nome, tipo, base_custo, margem_lucro, material_principal } = req.body;
 
-      // Criar o novo produto
+      if (!nome || !tipo || !base_custo || !margem_lucro) {
+        return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos!' });
+      }
+
       const novoProduto = await prisma.produto.create({
         data: {
           nome,
@@ -24,13 +27,20 @@ const produtoController = {
     }
   },
 
-  // Buscar todos os produtos
-  buscarProdutos: async (_, res) => {
+  // Buscar todos os produtos (com paginação)
+  buscarProdutos: async (req, res) => {
     try {
-      const produtos = await prisma.produto.findMany();
+      const { page = 1, limit = 10 } = req.query;
+
+      const skip = (page - 1) * limit;
+
+      const produtos = await prisma.produto.findMany({
+        skip: parseInt(skip, 10),
+        take: parseInt(limit, 10)
+      });
 
       if (!produtos.length) {
-        return res.status(404).json({ error: 'Ainda não há nenhum produto cadastrado!' });
+        return res.status(404).json({ error: 'Nenhum produto encontrado!' });
       }
 
       return res.status(200).json(produtos);
@@ -44,6 +54,11 @@ const produtoController = {
   buscarProduto: async (req, res) => {
     try {
       const id_produto = parseInt(req.params.id, 10);
+
+      // Verifique se o ID é válido
+      if (isNaN(id_produto)) {
+        return res.status(400).json({ error: 'ID inválido!' });
+      }
 
       const produto = await prisma.produto.findUnique({
         where: { id_produto }
@@ -60,10 +75,16 @@ const produtoController = {
     }
   },
 
-  // Atualizar informações do produto
+  // Atualizar produto
   atualizarProduto: async (req, res) => {
     try {
       const id_produto = parseInt(req.params.id, 10);
+
+      // Verifique se o ID é válido
+      if (isNaN(id_produto)) {
+        return res.status(400).json({ error: 'ID inválido!' });
+      }
+
       const { nome, tipo, base_custo, margem_lucro, material_principal } = req.body;
 
       const produto = await prisma.produto.findUnique({
@@ -96,6 +117,11 @@ const produtoController = {
   deletarProduto: async (req, res) => {
     try {
       const id_produto = parseInt(req.params.id, 10);
+
+      // Verifique se o ID é válido
+      if (isNaN(id_produto)) {
+        return res.status(400).json({ error: 'ID inválido!' });
+      }
 
       const produto = await prisma.produto.findUnique({
         where: { id_produto }

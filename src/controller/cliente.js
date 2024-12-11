@@ -6,6 +6,10 @@ const clienteController = {
     try {
       const { nome, contato, endereco } = req.body;
 
+      if (!nome || !contato) {
+        return res.status(400).json({ error: 'Nome e contato são obrigatórios!' });
+      }
+
       const novoCliente = await prisma.cliente.create({
         data: {
           nome,
@@ -21,13 +25,19 @@ const clienteController = {
     }
   },
 
-  // Buscar todos os clientes
-  buscarClientes: async (_, res) => {
+  // Buscar todos os clientes (com paginação)
+  buscarClientes: async (req, res) => {
     try {
-      const clientes = await prisma.cliente.findMany();
+      const { page = 1, limit = 10 } = req.query;
+      const skip = (page - 1) * limit;
+
+      const clientes = await prisma.cliente.findMany({
+        skip: parseInt(skip, 10),
+        take: parseInt(limit, 10)
+      });
 
       if (!clientes.length) {
-        return res.status(404).json({ error: 'Ainda não há nenhum cliente cadastrado!' });
+        return res.status(404).json({ error: 'Nenhum cliente encontrado!' });
       }
 
       return res.status(200).json(clientes);
@@ -57,7 +67,7 @@ const clienteController = {
     }
   },
 
-  // Atualizar informações do cliente
+  // Atualizar cliente
   atualizarCliente: async (req, res) => {
     try {
       const id_cliente = parseInt(req.params.id, 10);
@@ -107,6 +117,35 @@ const clienteController = {
       return res.status(200).json({ message: 'Cliente deletado com sucesso!' });
     } catch (e) {
       console.error('Erro ao deletar o cliente!', e);
+      return res.status(500).json({ error: 'Erro interno do servidor!' });
+    }
+  },
+
+  // Buscar pedidos de um cliente
+  buscarPedidosPorCliente: async (req, res) => {
+    try {
+      const id_cliente = parseInt(req.params.id, 10);
+
+      const cliente = await prisma.cliente.findUnique({
+        where: { id_cliente }
+      });
+
+      if (!cliente) {
+        return res.status(404).json({ error: 'Cliente não encontrado!' });
+      }
+
+      const pedidos = await prisma.pedido.findMany({
+        where: { cliente_id: id_cliente },
+        include: { itens: true } // Inclui os itens de cada pedido
+      });
+
+      if (!pedidos.length) {
+        return res.status(404).json({ error: 'Nenhum pedido encontrado para este cliente!' });
+      }
+
+      return res.status(200).json(pedidos);
+    } catch (e) {
+      console.error('Erro ao buscar pedidos do cliente!', e);
       return res.status(500).json({ error: 'Erro interno do servidor!' });
     }
   }

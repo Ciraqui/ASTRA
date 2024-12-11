@@ -9,7 +9,7 @@ const imagemController = {
       const novaImagem = await prisma.imagem.create({
         data: {
           origem,
-          custo_adicional,
+          custo_adicional
         }
       });
 
@@ -26,7 +26,7 @@ const imagemController = {
       const imagens = await prisma.imagem.findMany();
 
       if (!imagens.length) {
-        return res.status(404).json({ error: 'Nenhuma imagem encontrada!' });
+        return res.status(200).json([]);
       }
 
       return res.status(200).json(imagens);
@@ -62,10 +62,6 @@ const imagemController = {
       const id_imagem = parseInt(req.params.id, 10);
       const { origem, custo_adicional } = req.body;
 
-      if (isNaN(id_imagem)) {
-        return res.status(400).json({ error: 'Parâmetro inválido!' });
-      }
-
       const imagem = await prisma.imagem.findUnique({
         where: { id_imagem }
       });
@@ -77,7 +73,7 @@ const imagemController = {
       const imagemAtualizada = await prisma.imagem.update({
         data: {
           origem: origem ?? imagem.origem,
-          custo_adicional: custo_adicional ?? imagem.custo_adicional,
+          custo_adicional: custo_adicional ?? imagem.custo_adicional
         },
         where: { id_imagem }
       });
@@ -93,10 +89,6 @@ const imagemController = {
   deletarImagem: async (req, res) => {
     try {
       const id_imagem = parseInt(req.params.id, 10);
-
-      if (isNaN(id_imagem)) {
-        return res.status(400).json({ error: 'Parâmetro inválido!' });
-      }
 
       const imagem = await prisma.imagem.findUnique({
         where: { id_imagem }

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedidos - UMMA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+
+    <nav class="navbar navbar-dark bg-dark position-relative">
+        <div class="logo ms-3">
+            <a class="navbar-brand" href="/">UMMA</a>
+            <a href="/index.html">
+                <img src="/assets/logo-navbar.png" alt="Logo">
+            </a>
+        </div>
+        <div class="icone me-3">
+            <a href="/login.html">
+                <img src="/assets/Person.png" alt="Person" height="60px" style="padding: 10px;">
+            </a>
+        </div>
+        <div class="nav-links position-absolute" style="left: 50%; transform: translateX(-50%); display: flex;">
+            <a href="pedidos.html" class="nav-link text-white mx-3">PEDIDOS</a>
+            <a href="produtos.html" class="nav-link text-white mx-3">PRODUTOS</a>
+            <a href="clientes.html" class="nav-link text-white mx-3">CLIENTE</a>
+            <a href="imagens.html" class="nav-link text-white mx-3">IMAGEM</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1>Meus Pedidos</h1>
+        <button class="btn btn-dark mb-3" onclick="mostrarFormularioPedido()">Adicionar Pedido</button>
+        
+        <div id="listaPedido">
+            <!-- Os pedidos serão carregados aqui dinamicamente -->
+        </div>
+
+        <div id="formularioPedido" style="display: none;">
+            <h2>Novo Pedido</h2>
+            <form id="formPedido" class="needs-validation" novalidate>
+                <div class="mb-3">
+                    <label for="data" class="form-label">Data*</label>
+                    <input type="date" class="form-control" id="data" required>
+                    <div class="invalid-feedback">
+                        Por favor, insira a data do pedido.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="valor_total" class="form-label">Valor Total*</label>
+                    <input type="number" step="0.01" class="form-control" id="valor_total" required>
+                    <div class="invalid-feedback">
+                        Por favor, insira o valor total do pedido.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="status" class="form-label">Status*</label>
+                    <input type="text" class="form-control" id="status" required>
+                    <div class="invalid-feedback">
+                        Por favor, insira o status do pedido.
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="cliente_id" class="form-label">Cliente ID*</label>
+                    <input type="number" class="form-control" id="cliente_id" required>
+                    <div class="invalid-feedback">
+                        Por favor, insira o ID do cliente.
+                    </div>
+                </div>
+               
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelarFormulario()">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    
+    <script>
+        let modoEdicao = false;
+        let pedidoIdEmEdicao = null;
+
+        function mostrarFormularioPedido() {
+            modoEdicao = false;
+            pedidoIdEmEdicao = null;
+            document.getElementById('formularioPedido').style.display = 'block';
+            document.getElementById('formPedido').reset();
+        }
+
+        function cancelarFormulario() {
+            document.getElementById('formularioPedido').style.display = 'none';
+            document.getElementById('formPedido').reset();
+            modoEdicao = false;
+            pedidoIdEmEdicao = null;
+        }
+
+        async function carregarPedidos() {
+            try {
+                const response = await authFetch('http://localhost:3000/api/pedido');
+                
+                if (!response.ok) {
+                    throw new Error('Erro ao carregar pedidos');
+                }
+
+                const pedidos = await response.json();
+                const lista = document.getElementById('listaPedido');
+                lista.innerHTML = '';
+
+                if (!pedidos || pedidos.length === 0) {
+                    lista.innerHTML = '<div class="alert alert-info">Nenhum pedido cadastrado.</div>';
+                    return;
+                }
+
+                const row = document.createElement('div');
+                row.className = 'row';
+                
+                pedidos.forEach(pedido => {
+                    const col = document.createElement('div');
+                    col.className = 'col-md-4 mb-3';
+                    col.innerHTML = `
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">Data: ${new Date(pedido.data).toLocaleDateString()}</h5>
+                                <p class="card-text"><strong>Valor Total:</strong> R$ ${pedido.valor_total.toFixed(2)}</p>
+                                <p class="card-text"><strong>Status:</strong> ${pedido.status}</p>
+                                <p class="card-text"><strong>Cliente ID:</strong> ${pedido.cliente_id}</p>
+                            </div>
+                            <div class="card-footer">
+                                <button class="btn btn-danger btn-sm" onclick="deletarPedido(${pedido.id})">
+                                    Excluir
+                                </button>
+                                <button class="btn btn-primary btn-sm" onclick="atualizarPedido(${pedido.id})">
+                                    Editar
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    row.appendChild(col);
+                });
+                lista.appendChild(row);
+
+            } catch (error) {
+                console.error('Erro:', error);
+                if (error.message !== 'Não autenticado' && error.message !== 'Sessão expirada') {
+                    alert('Erro ao carregar pedidos');
+                }
+            }
+        }
+
+        document.getElementById('formPedido').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            try {
+                const dados = {
+                    data: document.getElementById('data').value.trim(),
+                    valor_total: parseFloat(document.getElementById('valor_total').value),
+                    status: document.getElementById('status').value.trim(),
+                    cliente_id: parseInt(document.getElementById('cliente_id').value)
+                };
+                
+                let url = 'http://localhost:3000/api/pedido';
+                let method = 'POST';
+
+                if (modoEdicao && pedidoIdEmEdicao) {
+                    url = `http://localhost:3000/api/pedido/${pedidoIdEmEdicao}`;
+                    method = 'PATCH';
+                } 
+                
+
+                const response = await authFetch(url, {
+                method: method,
+                body: JSON.stringify(dados)
+                });
+
+
+                if (!response.ok) {
+                    throw new Error('Erro ao salvar pedido');
+                }
+
+
+
+                alert(modoEdicao ? 'Pedido atualizado com sucesso!' : 'Pedido criado com sucesso!');
+                document.getElementById('formularioPedido').style.display = 'none';
+                document.getElementById('formPedido').reset();
+                modoEdicao = false;
+                pedidoIdEmEdicao = null;
+                await carregarPedidos ();
+               
+
+            } catch (error) {
+                console.error('Erro:', error);
+                alert(modoEdicao ? 'Erro ao salvar pedido': 'Erro ao criar pedido');
+            }
+        });
+
+        async function deletarPedido(id) {
+    if (!confirm('Tem certeza que deseja excluir este pedido?')) {
+        return;
+    }
+
+    try {
+        const response = await authFetch(`http://localhost:3000/api/pedido/${id}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro ao excluir pedido');
+        }
+
+        alert('Pedido excluído com sucesso!');
+        await carregarPedidos();
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao excluir pedido');
+    }
+}
+
+async function atualizarPedido(id) {
+    try {
+        modoEdicao = true;
+        pedidoIdEmEdicao = id;
+        
+        const response = await authFetch(`http://localhost:3000/api/pedido/${id}`);
+
+        if (!response.ok) {
+            throw new Error('Erro ao buscar dados do pedido');
+        }
+
+        const pedido = await response.json();
+
+        // Preencher o formulário com os dados atuais
+        document.getElementById('data').value = pedido.data;
+        document.getElementById('valor_total').value = pedido.valor_total;
+        document.getElementById('status').value = pedido.status;
+        document.getElementById('cliente_id').value = pedido.cliente_id;
+
+
+        // Mostrar o formulário
+        document.getElementById('formularioPedido').style.display = 'block';
+
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao carregar dados do pedido para edição.');
+    }
+}
+
+// Carregar imagens quando a página for carregada
+carregarPedidos();
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    </script>
+
+</body>
+</html>
